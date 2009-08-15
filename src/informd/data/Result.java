@@ -13,5 +13,7 @@ public class Result {
 
     public String title;
     public String url;
+    public String date;
+    public String time;
 
 }
