@@ -78,10 +78,12 @@ public class Main {
                 String[] tokens = line.split("[\t]+");
 
                 // ignore empty lines
-                if (tokens.length > 1) {
+                if (tokens.length == 2) {
                     trendingList.put(tokens[0], new Topic(tokens[0], Double.parseDouble(tokens[1])));
+                } else if(tokens.length == 3) {
+                    trendingList.put(tokens[0], new Topic(tokens[0], Double.parseDouble(tokens[1]), Integer.parseInt(tokens[2])));
                 }
-            }
+             }
 
             in.close();
             fstream.close();
@@ -113,7 +115,7 @@ public class Main {
                         continue;
                     }
 
-                    out.write(topic + "\t" + score + "\n");
+                    out.write(topic + "\t" + score + "\t" + trendingList.get(topic).getRank() + "\n");
                 }
             }
 
@@ -232,17 +234,28 @@ public class Main {
                 } else if (obj1.getScore() < obj2.getScore()) {
                     return 1;
                 } else {
+                    if(obj1.getRank() < obj2.getRank()) {
+                        return -1;
+                    } else if(obj1.getRank() > obj2.getRank()) {
+                        return 1;
+                    }
+                    
                     return 0;
                 }
             }
         });
 
+        int rank = 1;
         for (Topic topic : sortedTrendingTopics) {
             ArrayList<Result> topicCluster = getTopStories(topic.getValue(), MAX_CLUSTER_SIZE);
 
             if (topicCluster == null) {
                 continue;
             }
+
+            // set the rank
+            topic.setRank(rank++);
+            trendingList.put(topic.getValue(), topic);
 
             StringBuffer story = new StringBuffer("<div id='story-" + storyNum + "'>");
             StringBuffer related = new StringBuffer("<p><b>Related:</b>&nbsp;&nbsp;");
