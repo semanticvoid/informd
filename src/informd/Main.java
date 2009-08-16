@@ -78,13 +78,14 @@ public class Main {
 
                 // ignore empty lines
                 if (tokens.length > 1) {
-                    trendingList.put(tokens[0], new Topic(tokens[0], Double.parseDouble(tokens[2])));
+                    trendingList.put(tokens[0], new Topic(tokens[0], Double.parseDouble(tokens[1])));
                 }
             }
 
             in.close();
             fstream.close();
         } catch (Exception e) {
+            e.printStackTrace();
             // do nothing
             // just skip this part
         }
