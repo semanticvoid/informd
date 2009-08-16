@@ -13,10 +13,18 @@ public class Topic {
 
     private String value;
     private double score;
+    private int rank;
 
     public Topic(String value, double score) {
         this.value = value;
         this.score = score;
+        this.rank = 9999;
+    }
+
+    public Topic(String value, double score, int rank) {
+        this.value = value;
+        this.score = score;
+        this.rank = rank;
     }
 
     /**
@@ -45,6 +53,20 @@ public class Topic {
      */
     public void setScore(double score) {
         this.score = score;
+    }
+
+    /**
+     * @return the rank
+     */
+    public int getRank() {
+        return rank;
+    }
+
+    /**
+     * @param rank the rank to set
+     */
+    public void setRank(int rank) {
+        this.rank = rank;
     }
 
     
