@@ -44,6 +44,7 @@ public class TwitterAPI {
                 Trend t = tArr[i];
                 String query = t.getQuery();
 
+                // ignore hashtags
                 if(query.contains("#")) {
                     continue;
                 }
@@ -51,20 +52,20 @@ public class TwitterAPI {
                 topics.add(query);
             }
 
-            List<Trends> dailyTrends = twit.getDailyTrends();
-            for(Trends dTrends : dailyTrends) {
-                tArr = trends.getTrends();
-                for(int i=0; i<tArr.length; i++) {
-                    Trend t = tArr[i];
-                    String query = t.getQuery();
-
-                    if(query.contains("#")) {
-                        continue;
-                    }
-
-                    topics.add(query);
-                }
-            }
+//            List<Trends> dailyTrends = twit.getDailyTrends();
+//            for(Trends dTrends : dailyTrends) {
+//                tArr = trends.getTrends();
+//                for(int i=0; i<tArr.length; i++) {
+//                    Trend t = tArr[i];
+//                    String query = t.getQuery();
+//
+//                    if(query.contains("#")) {
+//                        continue;
+//                    }
+//
+//                    topics.add(query);
+//                }
+//            }
         } catch(Exception e) {
             e.printStackTrace();
             return null;
