@@ -7,14 +7,20 @@ package informd;
 import dygest.text.ScoredSentence;
 import dygest.text.summerizer.SynmanticSummerizer;
 import informd.data.Result;
+import informd.data.Topic;
 import informd.data.TwitterAPI;
 import informd.news.BOSSNewsAggregator;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -25,30 +31,29 @@ public class Main {
 
     // datastructure to store trending topics
     // <topic, timestamp in seconds since epoch>
-    HashMap<String, Long> trendingList;
-
+    HashMap<String, Topic> trendingList;
     // Twitter API
     TwitterAPI twitter;
-
     // News agg source
     BOSSNewsAggregator newsAgg;
-
     // Summarizer
     SynmanticSummerizer dygest;
-
+    // trending topics path
+    String topicsFileStorePath;
+    // default score for a story
+    final double DEFAULT_SCORE = 2.0;
     // max summary length
     final int MAX_SUMMARY_LEN = 4;
-
     // max cluster size
-    final int MAX_CLUSTER_SIZE = 4;
-
+    final int MAX_CLUSTER_SIZE = 3;
 
     public Main(String trendsFilePath) throws Exception {
         twitter = TwitterAPI.getSingleton();
         newsAgg = new BOSSNewsAggregator();
-        trendingList = new HashMap<String, Long>();
+        trendingList = new HashMap<String, Topic>();
+        topicsFileStorePath = trendsFilePath;
 
-        readTrendsFromFile(trendsFilePath);
+        readTrendsFromFile(topicsFileStorePath);
     }
 
     /**
@@ -57,26 +62,63 @@ public class Main {
      *  <timestamp> <trending topic>
      * @param filePath
      */
-    private void readTrendsFromFile(String filePath) {
+    public void readTrendsFromFile(String filePath) {
         try {
             FileReader fstream = new FileReader(filePath);
             BufferedReader in = new BufferedReader(fstream);
 
             String line;
-            while((line = in.readLine()) != null) {
+            while ((line = in.readLine()) != null) {
                 // skip comments if any
-                if(line.startsWith("#") || line.startsWith("/")) {
+                if (line.startsWith("#") || line.startsWith("/")) {
                     continue;
                 }
 
-                String[] tokens = line.split("[ \t]");
+                String[] tokens = line.split("[\t]+");
 
                 // ignore empty lines
-                if(tokens.length > 1) {
-                    trendingList.put(tokens[0], Long.parseLong(tokens[1]));
+                if (tokens.length > 1) {
+                    trendingList.put(tokens[0], new Topic(tokens[0], Double.parseDouble(tokens[2])));
                 }
             }
-        } catch(Exception e) {
+
+            in.close();
+            fstream.close();
+        } catch (Exception e) {
+            // do nothing
+            // just skip this part
+        }
+    }
+
+    /**
+     * Function to save the current trends 
+     */
+    public void saveTrendsToFile() {
+        try {
+            FileWriter fstream = new FileWriter(topicsFileStorePath);
+            BufferedWriter out = new BufferedWriter(fstream);
+
+            if (trendingList != null) {
+                Iterator<String> itr = trendingList.keySet().iterator();
+                while (itr.hasNext()) {
+                    String topic = itr.next();
+                    double score = trendingList.get(topic).getScore();
+                    // half life of a topic (4 hrs)
+                    score = Math.sqrt(score);
+
+                    // skip topic is timestamp is less than some constant
+                    if (score <= 1) {
+                        continue;
+                    }
+
+                    out.write(topic + "\t" + score + "\n");
+                }
+            }
+
+            out.close();
+            fstream.close();
+        } catch (Exception e) {
+            e.printStackTrace();
             // do nothing
             // just skip this part
         }
@@ -88,8 +130,18 @@ public class Main {
     public void addCurrentTrends() {
         HashSet<String> trendingTopics = twitter.getTrendingTopics();
 
-        for(String topic : trendingTopics) {
-            trendingList.put(topic, new Date().getTime());
+        if (trendingTopics != null) {
+            for (String topic : trendingTopics) {
+                // if topic already exists add default score to it
+                // else assign default score
+                if (trendingList.containsKey(topic)) {
+                    Topic t = trendingList.get(topic);
+                    t.setScore(t.getScore() + new Date().getTime());
+                    trendingList.put(topic, t);
+                } else {
+                    trendingList.put(topic, new Topic(topic, new Date().getTime()));
+                }
+            }
         }
     }
 
@@ -103,26 +155,26 @@ public class Main {
     private ArrayList<Result> getTopStories(String topic, int num) {
         ArrayList<Result> results = newsAgg.getTopResults(topic, num);
 
-        if(results != null) {
-            for(Result result : results) {
+        if (results != null) {
+            for (Result result : results) {
                 try {
                     dygest = new SynmanticSummerizer();
                     StringBuffer summary = new StringBuffer();
                     List<ScoredSentence> sentences = dygest.summerize(result.url);
 
                     int numSentences = 0;
-                    for(ScoredSentence sentence : sentences) {
+                    for (ScoredSentence sentence : sentences) {
                         summary.append(sentence.getText());
                         summary.append(" ");
                         numSentences++;
 
-                        if(numSentences == MAX_SUMMARY_LEN) {
+                        if (numSentences == MAX_SUMMARY_LEN) {
                             break;
                         }
                     }
 
                     result.snippet = summary.toString();
-                } catch(Exception e) {
+                } catch (Exception e) {
                     // skip summarizing this result
                 }
 
@@ -147,8 +199,7 @@ public class Main {
         header.append("</div>");
         header.append("</td></tr>");
         header.append("<tr><td colspan=2>&nbsp;</td></tr>");
-        header.append("<tr><td colspan=2 align=right>auto-generated on "
-                + new Date().toLocaleString() + " PDT</font></td></tr>");
+        header.append("<tr><td colspan=2 align=right>auto-generated on " + new Date().toLocaleString() + " PDT</font></td></tr>");
         header.append("<tr><td colspan=2>&nbsp;</td></tr>");
 
         return header.toString();
@@ -162,10 +213,29 @@ public class Main {
         StringBuffer content = new StringBuffer("<tr><td colspan=2><div style='margin-left: 2%' id='content'>");
 
         int storyNum = 0;
-        for(String topic : trendingList.keySet()) {
-            ArrayList<Result> topicCluster = getTopStories(topic, MAX_CLUSTER_SIZE);
 
-            if(topicCluster == null) {
+        // sort the topics by score
+        ArrayList<Topic> sortedTrendingTopics = new ArrayList<Topic>();
+        for (String topic : trendingList.keySet()) {
+            sortedTrendingTopics.add(trendingList.get(topic));
+        }
+        Collections.sort(sortedTrendingTopics, new Comparator<Topic>() {
+
+            public int compare(Topic obj1, Topic obj2) {
+                if (obj1.getScore() > obj2.getScore()) {
+                    return 1;
+                } else if (obj1.getScore() < obj2.getScore()) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        });
+
+        for (Topic topic : sortedTrendingTopics) {
+            ArrayList<Result> topicCluster = getTopStories(topic.getValue(), MAX_CLUSTER_SIZE);
+
+            if (topicCluster == null) {
                 continue;
             }
 
@@ -176,8 +246,8 @@ public class Main {
             boolean isFirst = true;
             boolean isError = false;
             boolean hasRelated = false;
-            for(Result result : topicCluster) {
-                if(isFirst) {
+            for (Result result : topicCluster) {
+                if (isFirst) {
                     isFirst = false;
                     story.append("<font size=5><a href='");
                     story.append(result.url);
@@ -190,7 +260,7 @@ public class Main {
                     story.append(result.snippet);
                     story.append("<ul>");
 
-                    if(result.snippet == null) {
+                    if (result.snippet == null) {
                         isError = true;
                         break;
                     }
@@ -204,13 +274,13 @@ public class Main {
                 }
             }
 
-            if(hasRelated) {
+            if (hasRelated) {
                 story.append(related);
             }
             story.append("</p>");
             story.append("</div>");
 
-            if(!isError) {
+            if (!isError) {
                 content.append(story);
                 storyNum++;
             }
@@ -223,13 +293,14 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            Main m = new Main("");
+            Main m = new Main("/Users/anand/trending_topics");
             m.addCurrentTrends();
 
             System.out.println(m.generatePageHeader());
             System.out.println(m.generatePageContent());
 
-        } catch(Exception e) {
+            m.saveTrendsToFile();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
