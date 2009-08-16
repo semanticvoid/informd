@@ -25,13 +25,13 @@ public class BOSSNewsAggregator {
     private static final String URL_PREFIX = "http://boss.yahooapis.com/ysearch/news/v1/";
     private static final String KEY = "qpBYTfjV34HWf6xUMwEjWYveb6ioxgZdv21O0anUms9gcB3NFox9caeEuavV7BtPubKJNg--";
 
-    private ArrayList<Result> getTopResults(String query, int num) {
+    public ArrayList<Result> getTopResults(String query, int num) {
         int resultCount = 0;
         ArrayList<Result> urls = new ArrayList<Result>();
         StringBuffer queryURL = new StringBuffer(URL_PREFIX);
         query = query.replaceAll(" ", "%20");
         queryURL.append(query);
-        queryURL.append("?appid=" + KEY + "&age=12h&orderby=date");
+        queryURL.append("?appid=" + KEY + "&age=1d");
 
         try {
             // get results
@@ -67,24 +67,10 @@ public class BOSSNewsAggregator {
                 }
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             return null;
         }
 
         return urls;
-    }
-
-    public ArrayList<Result> getNewsForTopics(HashSet<String> topics) {
-        ArrayList<Result> results = new ArrayList<Result>();
-
-        for(String topic : topics) {
-            System.out.println(topic);
-            ArrayList<Result> topResults = getTopResults(topic, 3);
-            if(topResults != null) {
-                results.addAll(topResults);
-            }
-        }
-
-        return results;
     }
 }
