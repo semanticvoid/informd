@@ -31,7 +31,7 @@ public class BOSSNewsAggregator {
         StringBuffer queryURL = new StringBuffer(URL_PREFIX);
         query = query.replaceAll(" ", "%20");
         queryURL.append(query);
-        queryURL.append("?appid=" + KEY + "&age=1d");
+        queryURL.append("?appid=" + KEY + "&age=1d&lang=en");
 
         try {
             // get results
