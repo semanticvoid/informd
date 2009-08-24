@@ -53,6 +53,7 @@ public class Main {
         newsAgg = new BOSSNewsAggregator();
         trendingList = new HashMap<String, Topic>();
         topicsFileStorePath = trendsFilePath;
+        dygest = new SynmanticSummerizer();
 
         readTrendsFromFile(topicsFileStorePath);
     }
@@ -162,7 +163,6 @@ public class Main {
         if (results != null) {
             for (Result result : results) {
                 try {
-                    dygest = new SynmanticSummerizer();
                     StringBuffer summary = new StringBuffer();
                     List<ScoredSentence> sentences = dygest.summerize(result.url);
 
